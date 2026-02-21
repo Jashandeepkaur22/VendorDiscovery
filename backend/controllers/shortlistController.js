@@ -1,7 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
 
-// Initialize the SDK. It automatically picks up GEMINI_API_KEY from the environment.
-
 export const generateShortlist = async (req, res) => {
   try {
     const { need, requirements, exclusions } = req.body;
@@ -20,19 +18,19 @@ ${requirements.map((r, i) => `${i + 1}. ${r}`).join("\n")}
 
 ${exclusions && exclusions.length > 0 ? `Please EXCLUDE the following vendors from your search and results: ${exclusions.join(", ")}` : ""}
 
-You must use your knowledge and ANY search tools available to you to find at least 3 software vendors that match the user's need.
+You must find at least 3 software vendors that match the user's need.
 
 For EACH vendor, provide the following information:
 - vendorName: The name of the software or company.
-- priceRange: A summary of their pricing. **CRITICAL: You MUST convert and format all prices in Indian Rupees (₹). Do NOT use Dollars ($)**. (e.g., "Starts at ₹800/mo", "Free tier available, enterprise custom", etc).
+- priceRange: A summary of their pricing. **CRITICAL: You MUST convert and format all prices in Indian Rupees (₹). Do NOT use Dollars ($)**.
 - keyFeaturesMatched: Describe how they meet the user's requirements.
-- risksAndLimits: Any potential downsides, limitations, or risks of choosing them.
-- evidenceLinks: A list of 1-3 URLs (official docs, pricing pages, etc) that prove the capabilities or pricing.
-- quotedSnippets: A short snippet of text quoted from their website/docs that supports the features or pricing.
+- risksAndLimits: Any potential downsides or risks.
+- evidenceLinks: A list of 1-3 URLs.
+- quotedSnippets: A short snippet of text from their website.
 
-Return the result STRICTLY as a JSON array of objects, with NO surrounding markdown formatting or backticks. 
-Each object in the array should have the exact keys:
-"vendorName", "priceRange", "keyFeaturesMatched", "risksAndLimits", "evidenceLinks" (array of strings), "quotedSnippets" (array of strings).
+Return the result STRICTLY as a JSON array of objects.
+Each object must have these exact keys:
+"vendorName", "priceRange", "keyFeaturesMatched", "risksAndLimits", "evidenceLinks", "quotedSnippets".
 `;
 
     const apiKey = process.env.GEMINI_API_KEY;
@@ -41,11 +39,10 @@ Each object in the array should have the exact keys:
       apiKey !== "your_api_key_here" &&
       apiKey !== "your_actual_api_key_here";
 
+    // --- 1. MOCK DATA FALLBACK ---
     if (!hasValidKey) {
       console.log("Using Mock Data (No Valid Gemini Key Provided)");
-      // Provide a 1.5 second artificial delay to simulate AI processing
       await new Promise((resolve) => setTimeout(resolve, 1500));
-
       const isVectorDb = need && need.toLowerCase().includes("vector");
 
       if (isVectorDb) {
@@ -54,34 +51,19 @@ Each object in the array should have the exact keys:
             {
               vendorName: "Pinecone",
               priceRange: "₹0 - ₹6,000/mo (Serverless Tier)",
-              keyFeaturesMatched: `Matches "${need}". Fully managed, serverless vector database perfect for small teams without dedicated DevOps.`,
-              risksAndLimits:
-                "Free tier limits strictly to one index and 2GB storage. Pricing scales rapidly with heavy usage.",
+              keyFeaturesMatched: `Matches "${need}". Fully managed, serverless vector database.`,
+              risksAndLimits: "Free tier limits strictly to one index. Pricing scales rapidly.",
               evidenceLinks: ["https://www.pinecone.io/pricing/"],
-              quotedSnippets: [
-                "Serverless: Pay only for what you use, starting at $0.",
-              ],
+              quotedSnippets: ["Serverless: Pay only for what you use, starting at $0."],
             },
             {
               vendorName: "Chroma",
-              priceRange: "Free (Open Source) / Cloud Private Preview",
-              keyFeaturesMatched: `Meets all requirements for a small team looking for a "${need}". Runs entirely locally or via Docker during early development.`,
-              risksAndLimits:
-                "Cloud offering is still in early access, meaning you must manage infrastructure yourself if deploying to production right now.",
+              priceRange: "Free (Open Source)",
+              keyFeaturesMatched: `Meets all requirements for "${need}". Runs entirely locally.`,
+              risksAndLimits: "Cloud offering is still in early access; must manage infrastructure yourself.",
               evidenceLinks: ["https://trychroma.com/"],
               quotedSnippets: ["The AI-native open-source embedding database."],
-            },
-            {
-              vendorName: "Qdrant",
-              priceRange: "₹0 - ₹2,500/mo (Free Cloud Cluster)",
-              keyFeaturesMatched: `Highly performant Rust-based "${need}" with a generous 1GB free cloud tier.`,
-              risksAndLimits:
-                "Rust ecosystem might have a steeper learning curve for advanced custom plugins compared to purely Python-based alternatives.",
-              evidenceLinks: ["https://qdrant.tech/pricing/"],
-              quotedSnippets: [
-                "Forever free 1GB cluster for rapid prototyping.",
-              ],
-            },
+            }
           ],
         });
       }
@@ -89,69 +71,51 @@ Each object in the array should have the exact keys:
       return res.status(200).json({
         shortlist: [
           {
-            vendorName: "MockEmailService India",
-            priceRange: "₹0 - ₹5,000/mo (Free Tier available)",
-            keyFeaturesMatched: `Perfectly matches "${need}". Includes Asia-Pacific servers, high deliverability in India, and basic template builder.`,
-            risksAndLimits:
-              "Free tier limits to 100 emails/day. Customer support is forum-only on cheap plans.",
-            evidenceLinks: [
-              "https://example.com/mock-email/pricing",
-              "https://example.com/mock-email/features-in",
-            ],
-            quotedSnippets: [
-              "We guarantee 99.9% uptime across all major Indian ISPs.",
-            ],
-          },
-          {
-            vendorName: "SendGiant",
-            priceRange: "₹1,600/mo starting price",
-            keyFeaturesMatched: `Meets 4/5 requirements for "${need}". Enterprise grade API with extensive Node.js SDKs.`,
-            risksAndLimits:
-              "Pricing scales poorly as volume increases. Dashboard can be confusing for non-technical users.",
-            evidenceLinks: ["https://example.com/sendgiant/docs"],
-            quotedSnippets: [
-              "Rated #1 for developer experience and easy integration.",
-            ],
-          },
-          {
-            vendorName: "LocalDelivery AI",
-            priceRange: "Custom Enterprise Pricing",
-            keyFeaturesMatched: `Fully compliant with Indian data localization laws. Specifically built for high-scale "${need}".`,
-            risksAndLimits:
-              "No self-serve sign up. Requires a sales call. Implementation takes 2-4 weeks.",
-            evidenceLinks: ["https://example.com/localdelivery/compliance"],
-            quotedSnippets: [
-              "All data is stored and processed exclusively in Mumbai, India.",
-            ],
-          },
-        ],
+            vendorName: "Mock Service",
+            priceRange: "₹0 - ₹5,000/mo",
+            keyFeaturesMatched: `Matches "${need}".`,
+            risksAndLimits: "Limited support on free tier.",
+            evidenceLinks: ["https://example.com"],
+            quotedSnippets: ["Standard mock response."],
+          }
+        ]
       });
     }
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-pro",
-      contents: prompt,
-      config: {
-        tools: [{ googleSearch: {} }],
-        responseMimeType: "application/json",
-      },
+    // --- 2. ACTUAL AI GENERATION ---
+    const genAI = new GoogleGenAI(apiKey);
+    
+    // Using 1.5-flash for speed or 1.5-pro for better reasoning
+    const model = genAI.getGenerativeModel({ 
+      model: "gemini-1.5-flash", 
     });
 
-    const text = response.text;
+    const result = await model.generateContent({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      // Use the Google Search tool for grounding
+      tools: [{ googleSearch: {} }],
+    });
 
-    let parsedData = [];
+    const response = await result.response;
+    const text = response.text();
+
+    // Clean potential markdown formatting from the response
+    const cleanJson = text.replace(/```json|```/g, "").trim();
+
     try {
-      parsedData = JSON.parse(text);
+      const parsedData = JSON.parse(cleanJson);
+      // Ensure we always return an object with the 'shortlist' key for the frontend
+      return res.status(200).json({ shortlist: Array.isArray(parsedData) ? parsedData : [parsedData] });
     } catch (e) {
       console.error("Failed to parse JSON response:", text);
       return res.status(500).json({ error: "AI returned malformed JSON." });
     }
 
-    return res.status(200).json({ shortlist: parsedData });
   } catch (error) {
     console.error("Error in generateShortlist:", error);
-    return res
-      .status(500)
-      .json({ error: "Internal server error while generating shortlist." });
+    return res.status(500).json({ 
+      error: "Internal server error.",
+      details: error.message 
+    });
   }
 };
