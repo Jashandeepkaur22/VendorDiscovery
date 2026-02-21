@@ -1,9 +1,10 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export const generateShortlist = async (req, res) => {
   try {
     const { need, requirements, exclusions } = req.body;
 
+    // 1. Basic Validation
     if (!need || !requirements || !Array.isArray(requirements)) {
       return res
         .status(400)
@@ -16,99 +17,55 @@ The user is looking for software vendors for the following need: "${need}"
 Their primary requirements are:
 ${requirements.map((r, i) => `${i + 1}. ${r}`).join("\n")}
 
-${exclusions && exclusions.length > 0 ? `Please EXCLUDE the following vendors from your search and results: ${exclusions.join(", ")}` : ""}
+${exclusions && exclusions.length > 0 ? `Please EXCLUDE the following vendors: ${exclusions.join(", ")}` : ""}
 
-You must find at least 3 software vendors that match the user's need.
-
-For EACH vendor, provide the following information:
-- vendorName: The name of the software or company.
-- priceRange: A summary of their pricing. **CRITICAL: You MUST convert and format all prices in Indian Rupees (₹). Do NOT use Dollars ($)**.
-- keyFeaturesMatched: Describe how they meet the user's requirements.
-- risksAndLimits: Any potential downsides or risks.
-- evidenceLinks: A list of 1-3 URLs.
-- quotedSnippets: A short snippet of text from their website.
-
-Return the result STRICTLY as a JSON array of objects.
+Find at least 3 software vendors. Return the result STRICTLY as a JSON array of objects.
 Each object must have these exact keys:
-"vendorName", "priceRange", "keyFeaturesMatched", "risksAndLimits", "evidenceLinks", "quotedSnippets".
+"vendorName", "priceRange", "keyFeaturesMatched", "risksAndLimits", "evidenceLinks" (array), "quotedSnippets" (array).
+
+CRITICAL: Convert and format all prices in Indian Rupees (₹).
 `;
 
     const apiKey = process.env.GEMINI_API_KEY;
-    const hasValidKey =
-      apiKey &&
-      apiKey !== "your_api_key_here" &&
-      apiKey !== "your_actual_api_key_here";
+    const hasValidKey = apiKey && apiKey.length > 10;
 
-    // --- 1. MOCK DATA FALLBACK ---
+    // 2. Mock Data Fallback (for local testing or missing API key)
     if (!hasValidKey) {
       console.log("Using Mock Data (No Valid Gemini Key Provided)");
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      const isVectorDb = need && need.toLowerCase().includes("vector");
-
-      if (isVectorDb) {
-        return res.status(200).json({
-          shortlist: [
-            {
-              vendorName: "Pinecone",
-              priceRange: "₹0 - ₹6,000/mo (Serverless Tier)",
-              keyFeaturesMatched: `Matches "${need}". Fully managed, serverless vector database.`,
-              risksAndLimits: "Free tier limits strictly to one index. Pricing scales rapidly.",
-              evidenceLinks: ["https://www.pinecone.io/pricing/"],
-              quotedSnippets: ["Serverless: Pay only for what you use, starting at $0."],
-            },
-            {
-              vendorName: "Chroma",
-              priceRange: "Free (Open Source)",
-              keyFeaturesMatched: `Meets all requirements for "${need}". Runs entirely locally.`,
-              risksAndLimits: "Cloud offering is still in early access; must manage infrastructure yourself.",
-              evidenceLinks: ["https://trychroma.com/"],
-              quotedSnippets: ["The AI-native open-source embedding database."],
-            }
-          ],
-        });
-      }
-
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       return res.status(200).json({
         shortlist: [
           {
-            vendorName: "Mock Service",
-            priceRange: "₹0 - ₹5,000/mo",
-            keyFeaturesMatched: `Matches "${need}".`,
-            risksAndLimits: "Limited support on free tier.",
+            vendorName: "Mock Vendor Pro",
+            priceRange: "₹1,200 - ₹5,000/mo",
+            keyFeaturesMatched: `Simulated match for "${need}".`,
+            risksAndLimits: "This is mock data because no API key was found.",
             evidenceLinks: ["https://example.com"],
-            quotedSnippets: ["Standard mock response."],
+            quotedSnippets: ["Mock snippet"],
           }
-        ]
+        ],
       });
     }
 
-    // --- 2. ACTUAL AI GENERATION ---
-    const genAI = new GoogleGenAI(apiKey);
-    
-    // Using 1.5-flash for speed or 1.5-pro for better reasoning
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-flash", 
-    });
+    // 3. Official AI Integration
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      // Use the Google Search tool for grounding
-      tools: [{ googleSearch: {} }],
-    });
-
+    const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
 
-    // Clean potential markdown formatting from the response
+    // 4. Clean the output (Removes ```json ... ``` if Gemini includes it)
     const cleanJson = text.replace(/```json|```/g, "").trim();
 
     try {
       const parsedData = JSON.parse(cleanJson);
-      // Ensure we always return an object with the 'shortlist' key for the frontend
-      return res.status(200).json({ shortlist: Array.isArray(parsedData) ? parsedData : [parsedData] });
+      // Ensure the response always follows the { shortlist: [...] } format the frontend expects
+      const finalArray = Array.isArray(parsedData) ? parsedData : [parsedData];
+      return res.status(200).json({ shortlist: finalArray });
     } catch (e) {
-      console.error("Failed to parse JSON response:", text);
-      return res.status(500).json({ error: "AI returned malformed JSON." });
+      console.error("JSON Parsing Error. Raw output:", text);
+      return res.status(500).json({ error: "AI output was not valid JSON." });
     }
 
   } catch (error) {
