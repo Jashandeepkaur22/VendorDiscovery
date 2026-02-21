@@ -33,6 +33,8 @@ function App() {
     setResults([]);
 
     try {
+
+      console.log(import.meta.env.VITE_API_URL)
       const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
       const response = await fetch(`${apiUrl}/api/shortlist`, {
         method: "POST",
