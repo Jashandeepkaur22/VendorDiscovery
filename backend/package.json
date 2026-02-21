@@ -1,0 +1,17 @@
+{
+  "name": "vendor-shortlist-backend",
+  "version": "1.0.0",
+  "description": "Backend for Vendor Shortlist App",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "@google/genai": "^1.42.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1"
+  }
+}

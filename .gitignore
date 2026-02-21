@@ -1,0 +1,11 @@
+# Ignore dependency directories
+backend/node_modules/
+frontend/node_modules/
+
+# Ignore environment variables (Crucial for security!)
+backend/.env
+.env
+
+# Ignore build folders (if applicable)
+frontend/dist/
+frontend/build/
